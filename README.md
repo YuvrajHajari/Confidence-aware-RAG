@@ -1,188 +1,143 @@
-# EXIT: Context-Aware Extractive Compression for RAG 🚀
+ANU-RAG: Attentive Nugget-Driven Utilization for Retrieval-Augmented Generation 🚀
+Official implementation of
+“ANU-RAG: Confidence-Aware Token Selection for Enhanced RAG Efficiency and Accuracy”
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![arXiv](https://img.shields.io/badge/arXiv-2412.12559-b31b1b.svg)](https://arxiv.org/abs/2412.12559)
+📋 Overview
+ANU-RAG is a novel framework that enhances Retrieval-Augmented Generation (RAG) by introducing confidence-based token pruning. It reduces the computational burden on the LLM while preserving critical context by:
 
-Official implementation of "EXIT: Context-Aware Extractive Compression for Enhancing Retrieval-Augmented Generation"
+🎯 Scoring individual tokens based on relevance to the user query
 
-## Overview 📋
+✂️ Pruning low-confidence tokens from retrieved passages
 
-EXIT is a context-aware extractive compression framework that improves both the effectiveness and efficiency of Retrieval-Augmented Generation (RAG) by:
+⚡ Significantly lowering the number of tokens sent to the LLM
 
-- 🎯 Preserving critical information while reducing context size
-- 🔍 Considering full document context when evaluating sentence importance
-- ⚡ Enabling parallelizable, context-aware extraction
-- 🎚️ Adapting dynamically to query complexity
-- ⚖️ Balancing compression ratio and answer accuracy
+📈 Maintaining (or improving) answer quality while reducing latency and token usage
 
-## Installation 💻
-
-```bash
+💻 Installation
+bash
+Copy
+Edit
 # Clone the repository
-git clone https://github.com/ThisIsHwang/EXIT.git
-cd EXIT
+git clone https://github.com/yourusername/ANU-RAG.git
+cd ANU-RAG
 
-# Create a new conda environment
-conda create -n exit python=3.8
-conda activate exit
+# Create and activate a virtual environment (optional but recommended)
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+🚀 Quickstart
+python
+Copy
+Edit
+# Run the confidence-aware RAG system
+python run_confidence_rag.py
 
-# Download spaCy model
-python -m spacy download en_core_web_sm
-```
+# For baseline (vanilla RAG without token pruning)
+python vanilla_rag.py
+You will be prompted to enter a question. The system will:
 
-## Quickstart 🚀
+Retrieve top-k relevant documents using FAISS.
 
-Here's a simple example demonstrating the EXIT RAG pipeline:
+Score tokens using DistilBERT.
 
-```python
-from exit_rag import ExitRAG, Document
+Prune low-confidence tokens and send only high-quality context to the LLM.
 
-# Initialize pipeline
-rag = ExitRAG(
-    retriever_model="google/gemma-2b-it",
-    compression_model="doubleyyh/exit-gemma-2b",
-    reader_model="meta-llama/Llama-3.1-8B-Instruct"
-)
+Generate a concise answer.
 
-# Example query and document
-query = "How do solid-state drives (SSDs) improve computer performance?"
-documents = [Document(
-    title="Computer Storage Technologies",
-    text="""
-    Solid-state drives use flash memory to store data without moving parts.
-    Unlike traditional hard drives, SSDs have no mechanical components.
-    The absence of physical movement allows for much faster data access speeds.
-    I bought my computer last week.
-    SSDs significantly reduce boot times and application loading speeds.
-    They consume less power and are more reliable than mechanical drives.
-    The price of SSDs has decreased significantly in recent years.
-    """
-)]
+📚 Dataset Preparation
+Dataset used: TriviaQA (RC subset)
 
-# Run RAG pipeline with compression
-result = rag.run_rag(query, documents)
+To build the FAISS index:
 
-# Print results
-print("\nQuery:", result["query"])
-print("\nCompressed Context:", result["compressed_context"])
-print("\nAnswer:", result["answer"])
-print(f"\nGeneration Time: {result['generation_time']:.2f}s")
-```
-## Data Preparation 📚
+bash
+Copy
+Edit
+python build_faiss_index.py
+This script loads 2000 training samples, extracts titles and descriptions, encodes them using SentenceTransformer, and saves a FAISS index and JSON corpus.
 
-### Download Datasets
+🔧 Implementation Details
+Retriever: SentenceTransformer (MiniLM-L6-v2)
 
-You can download the evaluation datasets (NaturalQuestions, TriviaQA, HotpotQA, 2WikiMultiHopQA) from the [CompAct repository](https://github.com/dmis-lab/CompAct).
+Confidence Scorer: DistilBERT (Token Classification)
 
-### Dataset Structure
+LLM Generator: Falcon-7B-Instruct
 
-Each dataset follows the format:
+Vector Store: FAISS (L2 IndexFlat)
 
-```json
+Confidence Threshold: Adjustable (default = 0.7)
 
-{
+Query Flow:
+Query ➝ FAISS ➝ Top-k docs ➝ Token Scoring ➝ Pruning ➝ LLM ➝ Answer
 
-    "question": "How do solid-state drives improve computer performance?",
+🧪 Results & Evaluation
+Example Query:
+❓ How does climate change affect polar bears?
 
-    "ctxs": [
+Vanilla RAG:
 
-        {
+Tokens Sent: ~300
 
-            "title": "Document Title",
+LLM Gen Time: 2391.15 sec
 
-            "text": "Document content...",
+Answer: “Climate change affects polar bears by…”
 
-            "score": 1.0
+ANU-RAG:
 
-        },
+Tokens Sent: ~100 (after pruning)
 
-        ...
+LLM Gen Time: 1874.24 sec
 
-    ]
+Answer: “Climate change can affect polar bears by…”
 
-}
+🟢 ANU-RAG delivers similar quality with ~22% faster inference.
 
-```
+⚙️ Key Features
+✅ Pluggable confidence scorer module
 
-## Model Details 🔧
+🔄 Switch between ANU-RAG and Vanilla RAG easily
 
-- **Base Model**: Gemma-2b-it
-- **Training Method**: PEFT/LoRA
-- **Training Data**: HotpotQA dataset with:
-  - Positive examples: Sentences marked as supporting facts
-  - Hard negatives: Sentences from same documents but not supporting facts
-  - Random negatives: Sentences from unrelated documents
-- **Recommended Parameters**:
-  - Compression threshold (tau): 0.5
-  - Cache directory: Configurable via initialization
+📊 Built-in timing for retrieval, scoring, generation
 
-## Key Features 🌟
+💬 Compatible with any HuggingFace-compatible LLM
 
-### Document Compression
+📈 Performance Metrics
+Metric	Vanilla RAG	ANU-RAG
+Tokens Sent to LLM	High	Low
+LLM Generation Time	Higher	Lower
+Answer Quality	Comparable	Comparable or Better
+Token Efficiency	❌	✅
 
-```python
-compressed_text, selections, scores = rag.compress_documents(
-    query=query,
-    documents=documents,
-    threshold=0.5  # Adjustable compression threshold
-)
-```
+📌 Limitations
+The DistilBERT confidence scorer is not fine-tuned.
 
-### Answer Generation
+Not trained for multi-hop or multi-modal queries.
 
-```python
-answer, generation_time = rag.generate_answer(
-    query=query,
-    context=compressed_text
-)
-```
+Currently supports only English.
 
-### Complete RAG Pipeline
+📅 Future Work
+Fine-tune confidence model on QA relevance datasets.
 
-```python
-result = rag.run_rag(
-    query=query,
-    documents=documents,
-    compression_threshold=0.5
-)
-```
+Add compression-aware retrievers (e.g., SALSA or EXIT).
 
-## Performance 📊
+Evaluate on other datasets like HotpotQA or NaturalQuestions.
 
-EXIT demonstrates superior performance in:
-- Token count reduction
-- Answer accuracy preservation
-- End-to-end latency reduction
-- Multi-hop question handling
+🖼️ Appendix
+Screenshots of dataset structure and FAISS index creation
 
-## Limitations ⚠️
+Sample answers from both Vanilla and Confidence-Aware RAG
 
-- Currently optimized for English text only
-- No support for cross-lingual compression
-- Requires GPU for optimal performance
+Code snippets for token scoring, pruning, and generation
 
-## Citation 📚
+📄 License
+MIT License. See LICENSE file.
 
-If you use EXIT in your research, please cite our paper:
+🙏 Acknowledgements
+HuggingFace Datasets & Transformers
 
-```bibtex
-@article{hwang2024exit,
-  title={EXIT: Context-Aware Extractive Compression for Enhancing Retrieval-Augmented Generation},
-  author={Hwang, Taeho and Cho, Sukmin and Jeong, Soyeong and Song, Hoyun and Han, SeungYoon and Park, Jong C.},
-  journal={arXiv preprint arXiv:2412.12559},
-  year={2024}
-}
-```
+SentenceTransformers
 
-## License 📄
+Falcon LLM (tiiuae/falcon-7b-instruct)
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## Contact 📧
-
-For questions or issues:
-- Open an issue in this repository
-- Contact: doubleyyh@kaist.ac.kr
+FAISS by Facebook AI
